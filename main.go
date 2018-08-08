@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -22,5 +23,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	traceroute.Traceroute(address, maxTTL)
+	for logMessage := range traceroute.Traceroute(address, maxTTL) {
+		fmt.Println(logMessage)
+	}
 }
