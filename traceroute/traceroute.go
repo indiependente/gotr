@@ -17,7 +17,14 @@ func checkError(err error) {
 	}
 }
 
-func Traceroute(address string, maxTTL int) {
+// Traceroute returns a string channel to range over in order to get the trace results
+func Traceroute(address string, maxTTL int) <-chan string {
+	outCh := make(chan string)
+	go iCMPTraceroute(address, maxTTL, outCh)
+	return outCh
+}
+
+func iCMPTraceroute(address string, maxTTL int, outCh chan string) {
 	// Resolve to IP
 	ipaddr, err := net.ResolveIPAddr("ip4", address)
 	checkError(err)
@@ -28,8 +35,8 @@ func Traceroute(address string, maxTTL int) {
 
 	p := ipv4.NewPacketConn(c)
 
-	log.Printf("Launching traceroute against %s (%s)\n", address, ipaddr.IP.String())
-	fmt.Printf("\t\t\t#HOP\tREMOTE IP\t\tMSGLENGTH\n")
+	outCh <- fmt.Sprintf("%s Launching traceroute against %s (%s)", time.Now().Format("2006-01-02 15:04:05"), address, ipaddr.IP.String())
+	outCh <- "\t\t\t#HOP\tREMOTE IP\t\tMSGLENGTH"
 	t1 := time.Now()
 	var done bool
 
@@ -43,11 +50,12 @@ func Traceroute(address string, maxTTL int) {
 		}
 	}
 	if !done {
-		fmt.Printf(">>> Host unreachable in %d hops!\n", maxTTL)
+		outCh <- fmt.Sprintf(">>> Host unreachable in %d hops!", maxTTL)
 	}
 
 	t2 := time.Now().Sub(t1)
-	log.Printf("Time elapsed : %02dms", t2/time.Millisecond)
+	outCh <- fmt.Sprintf("Time elapsed : %02dms", t2/time.Millisecond)
+	close(outCh)
 }
 
 func sendPacket(pc *ipv4.PacketConn, ipaddress *net.IPAddr) {
