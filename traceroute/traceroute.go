@@ -18,11 +18,18 @@ func checkError(err error) {
 }
 
 // Traceroute returns a string channel to range over in order to get the trace results
-func Traceroute(address string, maxTTL int) <-chan string {
+func Traceroute(address string, maxTTL int, mode string) <-chan string {
 	outCh := make(chan string)
-	go iCMPTraceroute(address, maxTTL, outCh)
+	switch mode {
+	case "icmp":
+		go iCMPTraceroute(address, maxTTL, outCh)
+	case "udp":
+		go uDPTraceroute(address, maxTTL, outCh)
+	}
 	return outCh
 }
+
+func uDPTraceroute(address string, maxTTL int, outCh chan string) {}
 
 func iCMPTraceroute(address string, maxTTL int, outCh chan string) {
 	// Resolve to IP
