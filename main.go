@@ -1,10 +1,11 @@
 package main
 
 import (
-	"goexcrs/traceroute"
 	"log"
 	"os"
 	"strconv"
+
+	"github.com/indiependente/gotr/traceroute"
 )
 
 func main() {
