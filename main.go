@@ -12,9 +12,7 @@ import (
 func isSupportedProto(p string) bool {
 	switch p {
 	case "icmp", "udp":
-		{
-			return true
-		}
+		return true
 	default:
 		return false
 	}
