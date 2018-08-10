@@ -76,7 +76,7 @@ func uDPTraceroute(address string, maxTTL int, outCh chan string) {
 	hostport := address + ":" + ciscoPort
 	udpAddr, err := net.ResolveUDPAddr("udp4", hostport)
 	checkError(err)
-	outCh <- "address resolved to udp"
+	outCh <- "address resolved to udp = " + udpAddr.IP.String()
 	localAddr, err := net.ResolveUDPAddr("udp4", "0.0.0.0:5000")
 	checkError(err)
 	outCh <- "local address created"
@@ -94,16 +94,14 @@ func uDPTraceroute(address string, maxTTL int, outCh chan string) {
 	outCh <- "Starting... maxTTL = " + strconv.Itoa(maxTTL)
 	for i := 1; i < maxTTL; i++ {
 		outCh <- "TTL = " + strconv.Itoa(i)
-
 		// outCh <- "TTL set"
-		_, err := c.WriteToUDP([]byte("go"), udpAddr)
+		writtenBytes, err := c.WriteToUDP([]byte("go"), udpAddr)
 		checkError(err)
-		outCh <- "packet sent"
-		// done = readPacket(p)
+		outCh <- strconv.Itoa(writtenBytes) + " bytes sent"
 		// read one reply
 		var inBuf []byte
 		readLen, fromAddr, err := c.ReadFromUDP(inBuf)
-		fmt.Println("Read ", readLen, "bytesfrom ", fromAddr)
+		fmt.Println("Read", readLen, "bytes from", fromAddr)
 		outCh <- "packet read"
 		if done {
 			break
