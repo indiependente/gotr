@@ -40,6 +40,7 @@ func craftPacket() ([]byte, error) {
 
 func readPacket(pc *ipv4.PacketConn) bool {
 	buff := make([]byte, 1500)
+	fmt.Printf("TEST\n")
 	n, _, peer, err := pc.ReadFrom(buff)
 	checkError(err)
 	m, err := icmp.ParseMessage(ipv4.ICMPTypeEcho.Protocol(), buff[:n])
@@ -79,13 +80,15 @@ func uDPTraceroute(address string, maxTTL int, outCh chan string) {
 	outCh <- "address resolved to udp = " + udpAddr.IP.String()
 	localAddr, err := net.ResolveUDPAddr("udp4", "0.0.0.0:5000")
 	checkError(err)
-	outCh <- "local address created"
+	outCh <- "local address resolved"
 	c, err := net.ListenUDP("udp4", localAddr)
 	checkError(err)
 	outCh <- "listening udp on local address"
 	defer c.Close()
 
-	// p := ipv4.NewPacketConn(c)
+	pc := ipv4.NewPacketConn(c)
+	defer pc.Close()
+
 	outCh <- "packet connection created"
 	outCh <- fmt.Sprintf("%s Launching traceroute against %s (%s)", time.Now().Format("2006-01-02 15:04:05"), address, udpAddr.IP.String())
 	outCh <- "\t\t\t#HOP\tREMOTE IP\t\tMSGLENGTH"
@@ -94,15 +97,14 @@ func uDPTraceroute(address string, maxTTL int, outCh chan string) {
 	outCh <- "Starting... maxTTL = " + strconv.Itoa(maxTTL)
 	for i := 1; i < maxTTL; i++ {
 		outCh <- "TTL = " + strconv.Itoa(i)
+		pc.SetTTL(i)
 		// outCh <- "TTL set"
-		writtenBytes, err := c.WriteToUDP([]byte("go"), udpAddr)
+		writtenBytes, err := pc.WriteTo([]byte("GoFF"), nil, udpAddr)
 		checkError(err)
+		// writtenBytes, err := c.WriteToUDP([]byte("go"), udpAddr)
 		outCh <- strconv.Itoa(writtenBytes) + " bytes sent"
 		// read one reply
-		var inBuf []byte
-		readLen, fromAddr, err := c.ReadFromUDP(inBuf)
-		fmt.Println("Read", readLen, "bytes from", fromAddr)
-		outCh <- "packet read"
+		done = readPacket(pc)
 		if done {
 			break
 		}
