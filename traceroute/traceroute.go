@@ -33,7 +33,8 @@ func iCMPTraceroute(address string, maxTTL int, outCh chan string) {
 	checkError(err)
 	defer c.Close()
 
-	p := ipv4.NewPacketConn(c)
+	pc := ipv4.NewPacketConn(c)
+	defer pc.Close()
 
 	outCh <- fmt.Sprintf("%s Launching traceroute against %s (%s)", time.Now().Format("2006-01-02 15:04:05"), address, ipaddr.IP.String())
 	outCh <- "\t\t\t#HOP\tREMOTE IP\t\tMSGLENGTH"
@@ -41,10 +42,10 @@ func iCMPTraceroute(address string, maxTTL int, outCh chan string) {
 	var done bool
 
 	for i := 1; i < maxTTL; i++ {
-		p.SetTTL(i)
-		sendPacket(p, ipaddr)
+		pc.SetTTL(i)
+		sendPacket(pc, ipaddr)
 		checkError(err)
-		done = readPacket(p)
+		done = readPacket(pc)
 		if done {
 			break
 		}
