@@ -11,6 +11,8 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
+const readTimeoutSec = 10
+
 func checkError(err error) {
 	if err != nil {
 		panic(err)
@@ -39,22 +41,19 @@ func iCMPTraceroute(address string, maxTTL int, outCh chan string) {
 	outCh <- fmt.Sprintf("%s Launching traceroute against %s (%s)", time.Now().Format("2006-01-02 15:04:05"), address, ipaddr.IP.String())
 	outCh <- "\t\t\t#HOP\tREMOTE IP\t\tMSGLENGTH"
 	t1 := time.Now()
-	var done bool
-
-	for i := 1; i < maxTTL; i++ {
+	var i int
+	for i = 1; i < maxTTL; i++ {
 		pc.SetTTL(i)
 		sendPacket(pc, ipaddr)
-		checkError(err)
-		done = readPacket(pc)
-		if done {
+		if readPacket(pc) {
 			break
 		}
 	}
-	if !done {
+	if i >= maxTTL {
 		outCh <- fmt.Sprintf(">>> Host unreachable in %d hops!", maxTTL)
 	}
 
-	t2 := time.Now().Sub(t1)
+	t2 := time.Since(t1)
 	outCh <- fmt.Sprintf("Time elapsed : %02dms", t2/time.Millisecond)
 	close(outCh)
 }
@@ -68,8 +67,12 @@ func sendPacket(pc *ipv4.PacketConn, ipaddress *net.IPAddr) {
 
 func readPacket(pc *ipv4.PacketConn) bool {
 	buff := make([]byte, 1500)
+	pc.SetReadDeadline(time.Now().Add(readTimeoutSec * time.Second))
 	n, _, peer, err := pc.ReadFrom(buff)
-	checkError(err)
+	if err != nil {
+		fmt.Printf("Request %ds Timeout\n", readTimeoutSec)
+		return false
+	}
 	m, err := icmp.ParseMessage(ipv4.ICMPTypeEcho.Protocol(), buff[:n])
 	checkError(err)
 	ttl, err := pc.TTL()
@@ -77,6 +80,8 @@ func readPacket(pc *ipv4.PacketConn) bool {
 	switch m.Type {
 	case ipv4.ICMPTypeTimeExceeded: // hop
 		logHop(ttl, peer, m)
+	case ipv4.ICMPTypeDestinationUnreachable:
+		log.Printf("\t-:\t%v\t\t[%d bytes]\tDESTINATION UNREACHABLE\n", peer, m.Body.Len(1))
 	case ipv4.ICMPTypeEchoReply: // destination
 		logHop(ttl, peer, m)
 		return true
