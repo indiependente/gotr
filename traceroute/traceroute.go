@@ -2,7 +2,6 @@ package traceroute
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"time"
@@ -19,11 +18,23 @@ func checkError(err error) {
 	}
 }
 
+// Tracer implements the Traceroute operation.
+type Tracer struct {
+	address string
+	Out     chan string
+}
+
+// NewTracer returns a new Tracer.
+func NewTracer(addr string) Tracer {
+	return Tracer{
+		address: addr,
+		Out:     make(chan string),
+	}
+}
+
 // Traceroute returns a string channel to range over in order to get the trace results
-func Traceroute(address string, maxTTL int) <-chan string {
-	outCh := make(chan string)
-	go iCMPTraceroute(address, maxTTL, outCh)
-	return outCh
+func (tr Tracer) Traceroute(maxTTL int) {
+	go iCMPTraceroute(tr.address, maxTTL, tr.Out)
 }
 
 func iCMPTraceroute(address string, maxTTL int, outCh chan string) {
@@ -39,13 +50,13 @@ func iCMPTraceroute(address string, maxTTL int, outCh chan string) {
 	defer pc.Close()
 
 	outCh <- fmt.Sprintf("%s Launching traceroute against %s (%s)", time.Now().Format("2006-01-02 15:04:05"), address, ipaddr.IP.String())
-	outCh <- "\t\t\t#HOP\tREMOTE IP\t\tMSGLENGTH"
+	outCh <- "\t#HOP\tREMOTE IP\t\tMSGLENGTH\tNAMES"
 	t1 := time.Now()
 	var i int
-	for i = 1; i < maxTTL; i++ {
+	for i = 1; i <= maxTTL; i++ {
 		pc.SetTTL(i)
 		sendPacket(pc, ipaddr)
-		if readPacket(pc) {
+		if readPacket(pc, outCh) {
 			break
 		}
 	}
@@ -65,8 +76,8 @@ func sendPacket(pc *ipv4.PacketConn, ipaddress *net.IPAddr) {
 	checkError(err)
 }
 
-func readPacket(pc *ipv4.PacketConn) bool {
-	buff := make([]byte, 1500)
+func readPacket(pc *ipv4.PacketConn, out chan string) bool {
+	buff := make([]byte, 256)
 	pc.SetReadDeadline(time.Now().Add(readTimeoutSec * time.Second))
 	n, _, peer, err := pc.ReadFrom(buff)
 	if err != nil {
@@ -79,14 +90,14 @@ func readPacket(pc *ipv4.PacketConn) bool {
 	checkError(err)
 	switch m.Type {
 	case ipv4.ICMPTypeTimeExceeded: // hop
-		logHop(ttl, peer, m)
+		logHop(ttl, peer, m, out)
 	case ipv4.ICMPTypeDestinationUnreachable:
-		log.Printf("\t-:\t%v\t\t[%d bytes]\tDESTINATION UNREACHABLE\n", peer, m.Body.Len(1))
+		out <- fmt.Sprintf("\t-:\t%v\t\t[%d bytes]\tDESTINATION UNREACHABLE\n", peer, m.Body.Len(1))
 	case ipv4.ICMPTypeEchoReply: // destination
-		logHop(ttl, peer, m)
+		logHop(ttl, peer, m, out)
 		return true
 	default:
-		log.Printf("%v: %+v", peer, m)
+		out <- fmt.Sprintf("%v: %+v", peer, m)
 	}
 	return false
 }
@@ -103,11 +114,11 @@ func craftPacket() ([]byte, error) {
 	return wb, err
 }
 
-func logHop(ttl int, peer net.Addr, m *icmp.Message) {
+func logHop(ttl int, peer net.Addr, m *icmp.Message, outCh chan string) {
 	names, _ := net.LookupAddr(peer.String())
 	if len(names) > 0 {
-		log.Printf("\t%d:\t%v\t\t[%d bytes]\t%+v\n", ttl, peer, m.Body.Len(1), names)
+		outCh <- fmt.Sprintf("\t%d:\t%v\t\t[%d bytes]\t%+v\n", ttl, peer, m.Body.Len(1), names)
 	} else {
-		log.Printf("\t%d:\t%v\t\t[%d bytes]\n", ttl, peer, m.Body.Len(1))
+		outCh <- fmt.Sprintf("\t%d:\t%v\t\t[%d bytes]\n", ttl, peer, m.Body.Len(1))
 	}
 }

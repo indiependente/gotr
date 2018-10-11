@@ -23,7 +23,9 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	for logMessage := range traceroute.Traceroute(address, maxTTL) {
+	tr := traceroute.NewTracer(address)
+	tr.Traceroute(maxTTL)
+	for logMessage := range tr.Out {
 		fmt.Println(logMessage)
 	}
 }
