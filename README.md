@@ -2,20 +2,34 @@
 Golang implementation of the traceroute command (ICMP based)
  
  ### Usage
- `sudo ./gotr hostname [TTL]`
-  - It needs to be run as superuser because it has to send ICMP messages
-  - `hostname` can be both an IP address or an hostname
-  - `TTL` sets the maximum number of hops between the source and the target host
-  
+ ```
+ $ ./gotr -h
+GoTR - Golang implementation of the traceroute command (ICMP based) (root access required)
+
+  Usage:
+    GoTR [host]
+
+  Positional Variables:
+    host (Required) - hostname to traceroute
+  Flags:
+       --version  Displays the program version string.
+    -h --help  Displays help with available flag, subcommand, and positional value parameters.
+    -t --ttl  Number of allowed hops
+```
   ### Example
   ```
-$ sudo ./gotr google.com
-2018/02/24 19:12:05 Launching traceroute against google.com (216.58.206.142)
-						          #HOP	REMOTE IP			MSGLENGTH
-2018/02/24 19:12:05 	1:		199.91.137.242		[32 bytes]
-2018/02/24 19:12:05 	2:		195.66.224.125		[32 bytes]
-2018/02/24 19:12:05 	3:		108.170.246.129		[36 bytes]
-2018/02/24 19:12:05 	4:		216.239.56.193		[36 bytes]
-2018/02/24 19:12:05 	5:		216.58.206.142		[8 bytes]	[lhr25s15-in-f14.1e100.net.]
-2018/02/24 19:12:05 Time elapsed : 35ms
+$ sudo ./gotr google.com -t 5
+Password:
+2019-04-20 20:19:22 Launching traceroute against google.com (172.217.168.174) 👁‍🗨
+	#HOP	REMOTE IP		MSGLENGTH	NAMES
+	1:	192.168.1.1		[36 bytes]	[liveboxplus]
+
+	2:	192.169.255.254		[72 bytes]	[ip-192-169-255-254.ip.secureserver.net.]
+
+	3:	10.145.83.2		[32 bytes]
+
+	4:	172.217.168.174		[8 bytes]	[mad07s10-in-f14.1e100.net.]
+
+Destination reached 🎉
+Time elapsed : 50ms
 ```
