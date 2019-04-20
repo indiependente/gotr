@@ -33,6 +33,7 @@ func NewTracer(addr string) Tracer {
 	}
 }
 
+// Hops returns a read only channel where hop events will be published.
 func (tr Tracer) Hops() <-chan string {
 	return tr.out
 }
