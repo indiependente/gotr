@@ -22,20 +22,24 @@ func checkError(err error) {
 // Tracer implements the Traceroute operation.
 type Tracer struct {
 	address string
-	Out     chan string
+	out     chan string
 }
 
 // NewTracer returns a new Tracer.
 func NewTracer(addr string) Tracer {
 	return Tracer{
 		address: addr,
-		Out:     make(chan string),
+		out:     make(chan string),
 	}
+}
+
+func (tr Tracer) Hops() <-chan string {
+	return tr.out
 }
 
 // Traceroute returns a string channel to range over in order to get the trace results
 func (tr Tracer) Traceroute(maxTTL int) {
-	go iCMPTraceroute(tr.address, maxTTL, tr.Out)
+	go iCMPTraceroute(tr.address, maxTTL, tr.out)
 }
 
 func iCMPTraceroute(address string, maxTTL int, outCh chan string) {
@@ -85,7 +89,7 @@ func readPacket(pc *ipv4.PacketConn, out chan string) bool {
 	pc.SetReadDeadline(time.Now().Add(readTimeoutSec * time.Second))
 	n, _, peer, err := pc.ReadFrom(buff)
 	if err != nil {
-		out <- au.Magenta(fmt.Sprintf("Request %ds Timeout\n", readTimeoutSec)).String()
+		out <- au.Magenta(fmt.Sprintf("\tRequest %ds Timeout\n", readTimeoutSec)).String()
 		return false
 	}
 	m, err := icmp.ParseMessage(ipv4.ICMPTypeEcho.Protocol(), buff[:n])
