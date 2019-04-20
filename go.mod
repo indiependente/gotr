@@ -1,3 +1,9 @@
 module github.com/indiependente/gotr
 
-require golang.org/x/net v0.0.0-20181005035420-146acd28ed58
+go 1.12
+
+require (
+	github.com/integrii/flaggy v1.2.0
+	github.com/logrusorgru/aurora v0.0.0-20190417130405-e50442bb4cb5
+	golang.org/x/net v0.0.0-20190420063019-afa5a82059c6
+)
