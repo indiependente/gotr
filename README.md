@@ -1,6 +1,14 @@
 # gotr
 Golang implementation of the traceroute command (ICMP based)
  
+ ### How to install
+ ```
+ git clone https://github.com/indiependente/gotr
+ cd gotr
+ make deps
+ make build
+ ```
+ 
  ### Usage
  ```
  $ ./gotr -h
